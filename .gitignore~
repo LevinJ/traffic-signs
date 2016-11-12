@@ -6,4 +6,3 @@ models
 *.p
 *.pyc
 logs/
-~
