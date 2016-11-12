@@ -17,7 +17,7 @@ class TrafficSignModel(TFModel):
         TFModel.__init__(self)
         
         self.batch_size = 64
-        self.num_steps = self.batch_size*20
+        self.num_steps = self.batch_size*150
 
         self.summaries_dir = './logs/trafficsign'
         self.keep_dropout= 1.0
@@ -33,7 +33,7 @@ class TrafficSignModel(TFModel):
 
         return
     def overfit_small_data(self):
-        num_train = self.batch_size *2
+        num_train = self.batch_size *10
         self.X_train, self.y_train = self.X_train[:num_train], self.y_train[:num_train]
         return
     def get_input(self):
@@ -66,10 +66,10 @@ class TrafficSignModel(TFModel):
         return
     def add_inference_node(self):
         #output node self.pred
-        out = self.nn_layer(self.x_placeholder, 500, 'layer1')
+        out = self.nn_layer(self.x_placeholder, 100, 'layer1')
         out = self.dropout_layer(out)
         
-        self.scores = self.nn_layer(out, self.outputlayer_num, 'layer2')
+        self.scores = self.nn_layer(out, self.outputlayer_num, 'layer2', act=None)
         return
     def add_loss_node(self):
         #output node self.loss
@@ -89,7 +89,7 @@ class TrafficSignModel(TFModel):
     def add_optimizer_node(self):
         #output node self.train_step
         with tf.name_scope('train'):
-            optimizer = tf.train.AdamOptimizer(1.0e-5)
+            optimizer = tf.train.AdamOptimizer(1.0e-4)
 #             optimizer = tf.train.GradientDescentOptimizer(5.0e-1)
 #             grads_and_vars = optimizer.compute_gradients(self.loss)
 #             self.ratio_w1 = self.euclidean_norm(grads_and_vars[0][0])/self.euclidean_norm(grads_and_vars[0][1])

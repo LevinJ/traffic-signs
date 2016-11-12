@@ -38,7 +38,7 @@ class PrepareData(ExploreData):
         y = train_data[:,-1]
         
         
-        split = StratifiedShuffleSplit(y, 1, test_size=0.2, random_state=None)
+        split = StratifiedShuffleSplit(y, 1, test_size=0.2, random_state=43)
         for train_index, val_index in split:
             self.X_train = X[train_index]
             self.y_train = y[train_index]

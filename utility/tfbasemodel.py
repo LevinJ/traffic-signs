@@ -27,11 +27,12 @@ class TFModel(object):
         """Create a weight variable with appropriate initialization."""
         input_num,_ =shape
         weight_scale = np.sqrt(2.0/input_num)
+#         weight_scale = 1e-2
         initial = (weight_scale * np.random.randn(*shape)).astype(np.float32)
         return tf.Variable(initial)
     def bias_variable(self, shape):
         """Create a bias variable with appropriate initialization."""
-        initial = tf.constant(0.1, shape=shape)
+        initial = tf.constant(0.0, shape=shape)
         return tf.Variable(initial)
     def variable_summaries(self, var, name):
         """Attach a lot of summaries to a Tensor."""
@@ -63,12 +64,13 @@ class TFModel(object):
                 biases = self.bias_variable([output_dim])
                 self.variable_summaries(biases, layer_name + '/biases')
             with tf.name_scope('Wx_plus_b'):
-                preactivate = tf.matmul(input_tensor, weights) + biases
-                tf.histogram_summary(layer_name + '/pre_activations', preactivate)               
-            activations = act(preactivate, 'activation')
-            tf.histogram_summary(layer_name + '/activations', activations)
+                out = tf.matmul(input_tensor, weights) + biases
+                tf.histogram_summary(layer_name + '/pre_activations', out)               
+            if act is not None:
+                out = act(out, 'activation')
+                tf.histogram_summary(layer_name + '/activations', out)
             
-        return activations
+        return out
     def dropout_layer(self, to_be_dropped_layer):
         layer_id = int(to_be_dropped_layer.name.split('/')[0][-1])
         with tf.name_scope('dropout' + str(layer_id)):
