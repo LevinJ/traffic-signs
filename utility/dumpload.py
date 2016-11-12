@@ -1,4 +1,4 @@
-import cPickle as pickle
+import pickle
 import numpy as np
 import os
 
@@ -22,9 +22,9 @@ class DumpLoad:
         print(self.load())
         return
     
-    def dump(self, dataset):
+    def dump(self, dataset, protocoal = pickle.HIGHEST_PROTOCOL):
         with open(self.pickle_filepath, 'wb') as f:
-            pickle.dump(dataset, f, pickle.HIGHEST_PROTOCOL)
+            pickle.dump(dataset, f, protocoal)
         return
     
 
