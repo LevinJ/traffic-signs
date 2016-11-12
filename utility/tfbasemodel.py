@@ -25,7 +25,9 @@ class TFModel(object):
     # We can't initialize these variables to 0 - the network will get stuck.
     def weight_variable(self, shape):
         """Create a weight variable with appropriate initialization."""
-        initial = tf.truncated_normal(shape, stddev=0.1)
+        input_num,_ =shape
+        weight_scale = np.sqrt(2.0/input_num)
+        initial = (weight_scale * np.random.randn(*shape)).astype(np.float32)
         return tf.Variable(initial)
     def bias_variable(self, shape):
         """Create a bias variable with appropriate initialization."""

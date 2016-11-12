@@ -16,7 +16,7 @@ class TrafficSignModel(TFModel):
     def __init__(self):
         TFModel.__init__(self)
         
-        self.batch_size = 128
+        self.batch_size = 64
         self.num_steps = self.batch_size*20
 
         self.summaries_dir = './logs/trafficsign'
@@ -34,7 +34,7 @@ class TrafficSignModel(TFModel):
         return
     def overfit_small_data(self):
         num_train = self.batch_size *2
-        self.x_train, self.y_train = self.x_train[:num_train], self.y_train[:num_train]
+        self.X_train, self.y_train = self.X_train[:num_train], self.y_train[:num_train]
         return
     def get_input(self):
         # Input data.
@@ -42,18 +42,18 @@ class TrafficSignModel(TFModel):
         # attached to the graph.
         prepare_data = PrepareData()
         
-        self.x_train, self.y_train,self.x_validation,self.y_val, self.x_test,self.y_test= prepare_data.get_train_validationset()
+        self.X_train, self.y_train,self.X_val,self.y_val, self.X_test,self.y_test= prepare_data.get_train_validationset()
         
         num_class = np.unique(self.y_train).size
         
-        enc = OneHotEncoder(sparse=False).fit(self.y_train.reshape(-1,1))
+        enc = OneHotEncoder(sparse=False).fit(self.y_train)
 
-        self.y_train  = enc.transform(self.y_train.reshape(-1,1) )
-        self.y_val  = enc.transform(self.y_val.reshape(-1,1) )
-        self.y_test  = enc.transform(self.y_test.reshape(-1,1) )
+        self.y_train  = enc.transform(self.y_train)
+        self.y_val  = enc.transform(self.y_val)
+        self.y_test  = enc.transform(self.y_test)
         
         
-        self.inputlayer_num = self.x_train.shape[1]
+        self.inputlayer_num = self.X_train.shape[1]
         self.outputlayer_num = num_class
         
         # Input placehoolders
@@ -66,13 +66,10 @@ class TrafficSignModel(TFModel):
         return
     def add_inference_node(self):
         #output node self.pred
-        hidden1 = self.nn_layer(self.x_placeholder, 500, 'layer1')
-        dropped = self.dropout_layer(hidden1)
+        out = self.nn_layer(self.x_placeholder, 500, 'layer1')
+        out = self.dropout_layer(out)
         
-        output_layer = self.nn_layer(dropped, self.outputlayer_num, 'layer2')
-
-        
-        self.y_pred = tf.nn.softmax(output_layer)
+        self.scores = self.nn_layer(out, self.outputlayer_num, 'layer2')
         return
     def add_loss_node(self):
         #output node self.loss
@@ -81,7 +78,7 @@ class TrafficSignModel(TFModel):
     def __add_crossentropy_loss(self):
         with tf.name_scope('loss'):
             with tf.name_scope('crossentropy'):
-                self.loss = tf.reduce_mean(-tf.reduce_sum(self.y_true_placeholder * tf.log(self.y_pred), reduction_indices=[1]))
+                self.loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(self.scores, self.y_true_placeholder))
             tf.scalar_summary('crossentropy', self.loss)
         return
     def euclidean_norm(self, tensor):
@@ -92,7 +89,7 @@ class TrafficSignModel(TFModel):
     def add_optimizer_node(self):
         #output node self.train_step
         with tf.name_scope('train'):
-            optimizer = tf.train.AdamOptimizer(1.0e-3)
+            optimizer = tf.train.AdamOptimizer(1.0e-5)
 #             optimizer = tf.train.GradientDescentOptimizer(5.0e-1)
 #             grads_and_vars = optimizer.compute_gradients(self.loss)
 #             self.ratio_w1 = self.euclidean_norm(grads_and_vars[0][0])/self.euclidean_norm(grads_and_vars[0][1])
@@ -110,6 +107,7 @@ class TrafficSignModel(TFModel):
         return
     def add_accuracy_node(self):
         #output node self.accuracy
+        self.y_pred = tf.nn.softmax(self.scores)
         with tf.name_scope('evaluationmetrics'):
             with tf.name_scope('correct_prediction'):
                 correct_prediction = tf.equal(tf.argmax(self.y_pred,1), tf.argmax(self.y_true_placeholder,1))
@@ -123,20 +121,20 @@ class TrafficSignModel(TFModel):
     def feed_dict(self,feed_type):
         """Make a TensorFlow feed_dict: maps data onto Tensor placeholders."""
         if feed_type == "train":
-            xs, ys = self.get_next_batch(self.x_train, self.y_train, self.batch_size)
+            xs, ys = self.get_next_batch(self.X_train, self.y_train, self.batch_size)
             k = self.keep_dropout
             return {self.x_placeholder: xs, self.y_true_placeholder: ys, self.keep_prob_placeholder: k}
         if feed_type == "validation":
-            xs, ys = self.x_validation, self.y_val
+            xs, ys = self.X_val, self.y_val
             k = 1.0
             return {self.x_placeholder: xs, self.y_true_placeholder: ys, self.keep_prob_placeholder: k}
         if feed_type == "wholetrain":
-            xs, ys = self.x_train, self.y_train
+            xs, ys = self.X_train, self.y_train
             k = 1.0
             return {self.x_placeholder: xs, self.y_true_placeholder: ys, self.keep_prob_placeholder: k}
         # Now we are feeding test data into the neural network
         if feed_type == "test":
-            xs, ys = self.x_test, self.y_test
+            xs, ys = self.X_test, self.y_test
             k = 1.0
             return {self.x_placeholder: xs, self.y_true_placeholder: ys, self.keep_prob_placeholder: k}
     def debug_training(self, sess, step, train_metrics,train_loss):
