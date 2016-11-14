@@ -69,11 +69,18 @@ class TrafficSignModel(TFModel):
         return
     def add_inference_node(self):
         #output node self.pred
-        out = self.cnn_layer('layer1', self.x_placeholder, conv_fitler=[5,5,10])
-       
-        out = self.nn_layer(out, 100, 'layer2')
+        out = self.cnn_layer('layer1', self.x_placeholder, conv_fitler=[3,3,10])
+        out = self.max_pool_2x2("pooling1", out)
         
-        self.scores = self.nn_layer(out, self.outputlayer_num, 'layer3', act=None, dropout=False, batch_norm = False)
+        out = self.cnn_layer('layer2', self.x_placeholder, conv_fitler=[3,3,10])
+        out = self.max_pool_2x2("pooling2", out)
+        
+        out = self.cnn_layer('layer3', self.x_placeholder, conv_fitler=[3,3,10])
+        out = self.max_pool_2x2("pooling3", out)
+       
+        out = self.nn_layer('layer4', out, 100)
+        
+        self.scores = self.nn_layer('layer5', out, self.outputlayer_num, act=None, dropout=False, batch_norm = False)
         return
     def add_loss_node(self):
         #output node self.loss

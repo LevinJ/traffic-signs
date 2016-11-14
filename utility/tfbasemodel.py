@@ -51,9 +51,11 @@ class TFModel(object):
         return
     def conv2d(self, x, W):
         return tf.nn.conv2d(x, W, strides=[1, 1, 1, 1], padding='SAME')
-    def max_pool_2x2(self, x):
-        return tf.nn.max_pool(x, ksize=[1, 2, 2, 1],
+    def max_pool_2x2(self, layer_name, x):
+        with tf.name_scope(layer_name):
+            post_pool = tf.nn.max_pool(x, ksize=[1, 2, 2, 1],
                         strides=[1, 2, 2, 1], padding='SAME')
+            return post_pool
     def cnn_layer(self,layer_name, input_tensor,  conv_fitler=[5,5,10], act=tf.nn.relu, dropout=True, batch_norm = True):
         """Reusable code for making a simple neural net layer.
         It does a matrix multiply, bias add, and then uses relu to nonlinearize.
@@ -65,6 +67,7 @@ class TFModel(object):
         # Adding a name scope ensures logical grouping of the layers in the graph.
         with tf.name_scope(layer_name):
             with tf.name_scope('weights'):
+                # weight dimension, filter_height, filter_width,in_channels, output_channels
                 weights = self.weight_variable([filter_height, filter_width,in_channels, output_channels])
                 self.variable_summaries(weights, layer_name + '/weights')
             with tf.name_scope('biases'):
@@ -84,7 +87,7 @@ class TFModel(object):
             if dropout:
                 out = self.dropout_layer(out)
         return out
-    def nn_layer(self,input_tensor, output_dim, layer_name, act=tf.nn.relu, dropout=True, batch_norm = True):
+    def nn_layer(self,layer_name, input_tensor, output_dim,  act=tf.nn.relu, dropout=True, batch_norm = True):
         """Reusable code for making a simple neural net layer.
         It does a matrix multiply, bias add, and then uses relu to nonlinearize.
         It also sets up name scoping so that the resultant graph is easy to read,
