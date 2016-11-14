@@ -18,7 +18,7 @@ class TrafficSignModel(TFModel):
         TFModel.__init__(self)
         
         self.batch_size = 64
-        self.num_epochs = 192
+        self.num_epochs = 5
 
         self.summaries_dir = './logs/trafficsign'
         self.keep_dropout= 1.0
@@ -65,7 +65,7 @@ class TrafficSignModel(TFModel):
         self.keep_prob_placeholder = tf.placeholder(tf.float32, name='drop_out')
         self.phase_train_placeholder = tf.placeholder(tf.bool, name='phase_train')
         
-        self.overfit_small_data()
+#         self.overfit_small_data()
         return
     def add_inference_node(self):
         #output node self.pred
@@ -163,7 +163,7 @@ class TrafficSignModel(TFModel):
         epoch_has_iteration_num = self.y_train.shape[0]/self.batch_size
         epoch_id = step / epoch_has_iteration_num
         res = ""  
-        self.print_loss_every = epoch_has_iteration_num /1      #print traing loss 2 times each epoch
+        self.print_loss_every = epoch_has_iteration_num /5      #print traing loss 2 times each epoch
         
         if step == 1 or step % self.print_loss_every==0:
             res +="train loss: {:.3f}[{}/{}]".format(train_loss,  step, self.num_steps)
