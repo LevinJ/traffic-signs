@@ -46,15 +46,13 @@ class TFModel(object):
             tf.scalar_summary('min/' + name, tf.reduce_min(var))
             tf.histogram_summary(name, var)
         return
-    def nn_layer(self,input_tensor, output_dim, layer_name, act=tf.nn.relu):
-        input_dim = input_tensor.get_shape()[-1].value
-        return self.nn_layer_(input_tensor, input_dim, output_dim, layer_name, act=act)
-    def nn_layer_(self,input_tensor, input_dim, output_dim, layer_name, act=tf.nn.relu):
+    def nn_layer(self,input_tensor, output_dim, layer_name, act=tf.nn.relu, dropout=True):
         """Reusable code for making a simple neural net layer.
         It does a matrix multiply, bias add, and then uses relu to nonlinearize.
         It also sets up name scoping so that the resultant graph is easy to read,
         and adds a number of summary ops.
         """
+        input_dim = input_tensor.get_shape()[-1].value
         # Adding a name scope ensures logical grouping of the layers in the graph.
         with tf.name_scope(layer_name):
             with tf.name_scope('weights'):
@@ -69,8 +67,10 @@ class TFModel(object):
             if act is not None:
                 out = act(out, 'activation')
                 tf.histogram_summary(layer_name + '/activations', out)
-            
+            if dropout:
+                out = self.dropout_layer(out)
         return out
+    
     def dropout_layer(self, to_be_dropped_layer):
         layer_id = int(to_be_dropped_layer.name.split('/')[0][-1])
         with tf.name_scope('dropout' + str(layer_id)):

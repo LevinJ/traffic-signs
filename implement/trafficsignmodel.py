@@ -67,9 +67,10 @@ class TrafficSignModel(TFModel):
     def add_inference_node(self):
         #output node self.pred
         out = self.nn_layer(self.x_placeholder, 100, 'layer1')
-        out = self.dropout_layer(out)
+       
+        out = self.nn_layer(out, 100, 'layer2')
         
-        self.scores = self.nn_layer(out, self.outputlayer_num, 'layer2', act=None)
+        self.scores = self.nn_layer(out, self.outputlayer_num, 'layer3', act=None, dropout=False)
         return
     def add_loss_node(self):
         #output node self.loss
