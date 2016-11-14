@@ -45,6 +45,14 @@ class PrepareData(ExploreData):
             self.X_val =  X[val_index]
             self.y_val =  y[val_index]
         return
+    def get_train_validationset_3d(self):
+        self.get_train_validationset()
+        #hard coded logic
+        self.X_train = self.X_train.reshape(-1, 32,32,3)
+        self.X_val = self.X_val.reshape(-1, 32,32,3)
+        self.X_test = self.X_test.reshape(-1, 32,32,3)
+        return self.X_train, self.y_train,self.X_val,self.y_val, self.X_test,self.y_test
+        return
     def get_train_validationset(self):
         train_data, test_data = self.get_train_test_data()
         self.__split_dataset(train_data)

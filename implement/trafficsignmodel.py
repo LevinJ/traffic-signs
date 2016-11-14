@@ -44,7 +44,7 @@ class TrafficSignModel(TFModel):
         # attached to the graph.
         prepare_data = PrepareData()
         
-        self.X_train, self.y_train,self.X_val,self.y_val, self.X_test,self.y_test= prepare_data.get_train_validationset()
+        self.X_train, self.y_train,self.X_val,self.y_val, self.X_test,self.y_test= prepare_data.get_train_validationset_3d()
         
         num_class = np.unique(self.y_train).size
         
@@ -55,12 +55,12 @@ class TrafficSignModel(TFModel):
         self.y_test  = enc.transform(self.y_test)
         
         
-        self.inputlayer_num = self.X_train.shape[1]
+        inputlayer_shape = self.X_train.shape[1:]
         self.outputlayer_num = num_class
         
         # Input placehoolders
         with tf.name_scope('input'):
-            self.x_placeholder = tf.placeholder(tf.float32, [None, self.inputlayer_num], name='x_placeholder-input')
+            self.x_placeholder = tf.placeholder(tf.float32, [None] + list(inputlayer_shape), name='x_placeholder-input')
             self.y_true_placeholder = tf.placeholder(tf.float32, [None, self.outputlayer_num ], name='y-input')
         self.keep_prob_placeholder = tf.placeholder(tf.float32, name='drop_out')
         self.phase_train_placeholder = tf.placeholder(tf.bool, name='phase_train')
@@ -69,7 +69,7 @@ class TrafficSignModel(TFModel):
         return
     def add_inference_node(self):
         #output node self.pred
-        out = self.nn_layer(self.x_placeholder, 100, 'layer1')
+        out = self.cnn_layer('layer1', self.x_placeholder, conv_fitler=[5,5,10])
        
         out = self.nn_layer(out, 100, 'layer2')
         

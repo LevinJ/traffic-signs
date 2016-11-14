@@ -25,7 +25,10 @@ class TFModel(object):
     # We can't initialize these variables to 0 - the network will get stuck.
     def weight_variable(self, shape):
         """Create a weight variable with appropriate initialization."""
-        input_num,_ =shape
+        #this applies to both cnn and nn
+        input_dims = shape[:-1]
+        input_num = np.array(input_dims).prod()
+        
         weight_scale = np.sqrt(2.0/input_num)
 #         weight_scale = 1e-2
         initial = (weight_scale * np.random.randn(*shape)).astype(np.float32)
@@ -46,13 +49,49 @@ class TFModel(object):
             tf.scalar_summary('min/' + name, tf.reduce_min(var))
             tf.histogram_summary(name, var)
         return
+    def conv2d(self, x, W):
+        return tf.nn.conv2d(x, W, strides=[1, 1, 1, 1], padding='SAME')
+    def max_pool_2x2(self, x):
+        return tf.nn.max_pool(x, ksize=[1, 2, 2, 1],
+                        strides=[1, 2, 2, 1], padding='SAME')
+    def cnn_layer(self,layer_name, input_tensor,  conv_fitler=[5,5,10], act=tf.nn.relu, dropout=True, batch_norm = True):
+        """Reusable code for making a simple neural net layer.
+        It does a matrix multiply, bias add, and then uses relu to nonlinearize.
+        It also sets up name scoping so that the resultant graph is easy to read,
+        and adds a number of summary ops.
+        """
+        in_channels = input_tensor.get_shape()[-1].value
+        filter_height, filter_width, output_channels = conv_fitler
+        # Adding a name scope ensures logical grouping of the layers in the graph.
+        with tf.name_scope(layer_name):
+            with tf.name_scope('weights'):
+                weights = self.weight_variable([filter_height, filter_width,in_channels, output_channels])
+                self.variable_summaries(weights, layer_name + '/weights')
+            with tf.name_scope('biases'):
+                biases = self.bias_variable([output_channels])
+                self.variable_summaries(biases, layer_name + '/biases')
+            with tf.name_scope('Wx_plus_b'):
+                out = self.conv2d(input_tensor, weights) + biases
+                tf.histogram_summary(layer_name + '/pre_activations', out)               
+            
+            if batch_norm:
+                out = self.batch_norm(out, self.phase_train_placeholder)
+                
+            if act is not None:
+                out = act(out, 'activation')
+                tf.histogram_summary(layer_name + '/activations', out)
+                
+            if dropout:
+                out = self.dropout_layer(out)
+        return out
     def nn_layer(self,input_tensor, output_dim, layer_name, act=tf.nn.relu, dropout=True, batch_norm = True):
         """Reusable code for making a simple neural net layer.
         It does a matrix multiply, bias add, and then uses relu to nonlinearize.
         It also sets up name scoping so that the resultant graph is easy to read,
         and adds a number of summary ops.
         """
-        input_dim = input_tensor.get_shape()[-1].value
+        input_dim = [dim.value for dim in input_tensor.get_shape().dims][1:]
+        input_dim = np.array(input_dim).prod()
         # Adding a name scope ensures logical grouping of the layers in the graph.
         with tf.name_scope(layer_name):
             with tf.name_scope('weights'):
@@ -62,7 +101,8 @@ class TFModel(object):
                 biases = self.bias_variable([output_dim])
                 self.variable_summaries(biases, layer_name + '/biases')
             with tf.name_scope('Wx_plus_b'):
-                out = tf.matmul(input_tensor, weights) + biases
+                input_tensor_flat = tf.reshape(input_tensor, [-1, input_dim])
+                out = tf.matmul(input_tensor_flat, weights) + biases
                 tf.histogram_summary(layer_name + '/pre_activations', out)               
             
             if batch_norm:
