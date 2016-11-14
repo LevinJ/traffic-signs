@@ -18,7 +18,7 @@ class TrafficSignModel(TFModel):
         TFModel.__init__(self)
         
         self.batch_size = 64
-        self.num_epochs = 5
+        self.num_epochs = 60
 
         self.summaries_dir = './logs/trafficsign'
         self.keep_dropout= 1.0
@@ -69,18 +69,19 @@ class TrafficSignModel(TFModel):
         return
     def add_inference_node(self):
         #output node self.pred
-        out = self.cnn_layer('layer1', self.x_placeholder, conv_fitler=[3,3,10])
+        out = self.x_placeholder
+        out = self.cnn_layer('layer1',out , conv_fitler=[3,3,10])
         out = self.max_pool_2x2("pooling1", out)
         
-        out = self.cnn_layer('layer2', self.x_placeholder, conv_fitler=[3,3,10])
+        out = self.cnn_layer('layer2', out, conv_fitler=[3,3,10])
         out = self.max_pool_2x2("pooling2", out)
         
-        out = self.cnn_layer('layer3', self.x_placeholder, conv_fitler=[3,3,10])
-        out = self.max_pool_2x2("pooling3", out)
+#         out = self.cnn_layer('layer3', out, conv_fitler=[3,3,10])
+#         out = self.max_pool_2x2("pooling3", out)
        
-        out = self.nn_layer('layer4', out, 100)
+#         out = self.nn_layer('layer3', out, 100)
         
-        self.scores = self.nn_layer('layer5', out, self.outputlayer_num, act=None, dropout=False, batch_norm = False)
+        self.scores = self.nn_layer('layer3', out, self.outputlayer_num, act=None, dropout=False, batch_norm = False)
         return
     def add_loss_node(self):
         #output node self.loss
@@ -100,7 +101,7 @@ class TrafficSignModel(TFModel):
     def add_optimizer_node(self):
         #output node self.train_step
         with tf.name_scope('train'):
-            optimizer = tf.train.AdamOptimizer(1.0e-3)
+            optimizer = tf.train.AdamOptimizer(1.0e-4)
 #             optimizer = tf.train.GradientDescentOptimizer(5.0e-1)
 #             grads_and_vars = optimizer.compute_gradients(self.loss)
 #             self.ratio_w1 = self.euclidean_norm(grads_and_vars[0][0])/self.euclidean_norm(grads_and_vars[0][1])
