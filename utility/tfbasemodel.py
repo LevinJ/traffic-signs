@@ -46,7 +46,7 @@ class TFModel(object):
             tf.scalar_summary('min/' + name, tf.reduce_min(var))
             tf.histogram_summary(name, var)
         return
-    def nn_layer(self,input_tensor, output_dim, layer_name, act=tf.nn.relu, dropout=True):
+    def nn_layer(self,input_tensor, output_dim, layer_name, act=tf.nn.relu, dropout=True, batch_norm = True):
         """Reusable code for making a simple neural net layer.
         It does a matrix multiply, bias add, and then uses relu to nonlinearize.
         It also sets up name scoping so that the resultant graph is easy to read,
@@ -64,9 +64,14 @@ class TFModel(object):
             with tf.name_scope('Wx_plus_b'):
                 out = tf.matmul(input_tensor, weights) + biases
                 tf.histogram_summary(layer_name + '/pre_activations', out)               
+            
+            if batch_norm:
+                out = self.batch_norm(out, self.phase_train_placeholder)
+                
             if act is not None:
                 out = act(out, 'activation')
                 tf.histogram_summary(layer_name + '/activations', out)
+                
             if dropout:
                 out = self.dropout_layer(out)
         return out
@@ -76,6 +81,40 @@ class TFModel(object):
         with tf.name_scope('dropout' + str(layer_id)):
             dropped = tf.nn.dropout(to_be_dropped_layer, self.keep_prob_placeholder)
             return dropped
+    def batch_norm(self, input_tensor,phase_train):
+        """
+        Batch normalization on convolutional maps.
+        Ref.: http://stackoverflow.com/questions/33949786/how-could-i-use-batch-normalization-in-tensorflow
+        Args:
+            input_tensor:           Tensor, 4D BHWD input maps
+            feature_depth:       integer, depth of input maps
+            phase_train: boolean tf.Varialbe, true indicates training phase
+            scope:       string, variable scope
+        Return:
+            normed:      batch-normalized maps
+        """
+        inputs_shape = input_tensor.get_shape()
+        feature_depth = inputs_shape[-1].value
+        reduce_axis = list(range(len(inputs_shape) - 1))
+        layer_id = int(input_tensor.name.split('/')[0][-1])
+        with tf.variable_scope('bn'+  str(layer_id)):
+            beta = tf.Variable(tf.constant(0.0, shape=[feature_depth]),
+                                         name='beta', trainable=True)
+            gamma = tf.Variable(tf.constant(1.0, shape=[feature_depth]),
+                                          name='gamma', trainable=True)
+            batch_mean, batch_var = tf.nn.moments(input_tensor, reduce_axis, name='moments')
+            ema = tf.train.ExponentialMovingAverage(decay=0.5)
+    
+            def mean_var_with_update():
+                ema_apply_op = ema.apply([batch_mean, batch_var])
+                with tf.control_dependencies([ema_apply_op]):
+                    return tf.identity(batch_mean), tf.identity(batch_var)
+    
+            mean, var = tf.cond(phase_train,
+                                mean_var_with_update,
+                                lambda: (ema.average(batch_mean), ema.average(batch_var)))
+            normed = tf.nn.batch_normalization(input_tensor, mean, var, beta, gamma, 1e-3)
+        return normed
 
     def add_inference_node(self):
         pass

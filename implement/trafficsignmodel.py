@@ -17,7 +17,7 @@ class TrafficSignModel(TFModel):
         TFModel.__init__(self)
         
         self.batch_size = 64
-        self.num_steps = self.batch_size*150
+        self.num_steps = self.batch_size*30
 
         self.summaries_dir = './logs/trafficsign'
         self.keep_dropout= 1.0
@@ -61,6 +61,7 @@ class TrafficSignModel(TFModel):
             self.x_placeholder = tf.placeholder(tf.float32, [None, self.inputlayer_num], name='x_placeholder-input')
             self.y_true_placeholder = tf.placeholder(tf.float32, [None, self.outputlayer_num ], name='y-input')
         self.keep_prob_placeholder = tf.placeholder(tf.float32, name='drop_out')
+        self.phase_train_placeholder = tf.placeholder(tf.bool, name='phase_train')
         
         self.overfit_small_data()
         return
@@ -70,7 +71,7 @@ class TrafficSignModel(TFModel):
        
         out = self.nn_layer(out, 100, 'layer2')
         
-        self.scores = self.nn_layer(out, self.outputlayer_num, 'layer3', act=None, dropout=False)
+        self.scores = self.nn_layer(out, self.outputlayer_num, 'layer3', act=None, dropout=False, batch_norm = False)
         return
     def add_loss_node(self):
         #output node self.loss
@@ -90,7 +91,7 @@ class TrafficSignModel(TFModel):
     def add_optimizer_node(self):
         #output node self.train_step
         with tf.name_scope('train'):
-            optimizer = tf.train.AdamOptimizer(1.0e-4)
+            optimizer = tf.train.AdamOptimizer(1.0e-3)
 #             optimizer = tf.train.GradientDescentOptimizer(5.0e-1)
 #             grads_and_vars = optimizer.compute_gradients(self.loss)
 #             self.ratio_w1 = self.euclidean_norm(grads_and_vars[0][0])/self.euclidean_norm(grads_and_vars[0][1])
@@ -119,25 +120,23 @@ class TrafficSignModel(TFModel):
     def add_evalmetrics_node(self):
         self.add_accuracy_node()
         return
-    def feed_dict(self,feed_type):
+    def feed_dict(self,feed_type, phase_train = False):
         """Make a TensorFlow feed_dict: maps data onto Tensor placeholders."""
         if feed_type == "train":
             xs, ys = self.get_next_batch(self.X_train, self.y_train, self.batch_size)
             k = self.keep_dropout
-            return {self.x_placeholder: xs, self.y_true_placeholder: ys, self.keep_prob_placeholder: k}
         if feed_type == "validation":
             xs, ys = self.X_val, self.y_val
             k = 1.0
-            return {self.x_placeholder: xs, self.y_true_placeholder: ys, self.keep_prob_placeholder: k}
+
         if feed_type == "wholetrain":
             xs, ys = self.X_train, self.y_train
             k = 1.0
-            return {self.x_placeholder: xs, self.y_true_placeholder: ys, self.keep_prob_placeholder: k}
         # Now we are feeding test data into the neural network
         if feed_type == "test":
             xs, ys = self.X_test, self.y_test
             k = 1.0
-            return {self.x_placeholder: xs, self.y_true_placeholder: ys, self.keep_prob_placeholder: k}
+        return {self.x_placeholder: xs, self.y_true_placeholder: ys, self.keep_prob_placeholder: k, self.phase_train_placeholder:phase_train}
     def debug_training(self, sess, step, train_metrics,train_loss):
         if step % self.batch_size != 0:
             return
@@ -158,7 +157,8 @@ class TrafficSignModel(TFModel):
             tf.initialize_all_variables().run()
             logging.debug("Initialized")
             for step in range(0, self.num_steps + 1):
-                summary,  _ , train_loss, train_metrics =sess.run([self.merged, self.train_step, self.loss, self.accuracy], feed_dict=self.feed_dict("train"))
+                summary,  _ , train_loss, train_metrics =sess.run([self.merged, self.train_step, self.loss, self.accuracy], 
+                                                                  feed_dict=self.feed_dict("train", phase_train = True))
                 self.train_writer.add_summary(summary, step)
                 self.debug_training(sess, step, train_metrics, train_loss)
                 
