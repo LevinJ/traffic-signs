@@ -1,5 +1,6 @@
 import sys
 import os
+from __builtin__ import True
 sys.path.insert(0, os.path.abspath('..'))
 
 import tensorflow as tf
@@ -17,10 +18,11 @@ class TrafficSignModel(TFModel):
         TFModel.__init__(self)
         
         self.batch_size = 64
-        self.num_steps = self.batch_size*30
+        self.num_epochs = 192
 
         self.summaries_dir = './logs/trafficsign'
         self.keep_dropout= 1.0
+        
        
         logging.getLogger().addHandler(logging.FileHandler('logs/trafficsignnerual.log', mode='w'))
         return
@@ -137,32 +139,46 @@ class TrafficSignModel(TFModel):
             xs, ys = self.X_test, self.y_test
             k = 1.0
         return {self.x_placeholder: xs, self.y_true_placeholder: ys, self.keep_prob_placeholder: k, self.phase_train_placeholder:phase_train}
-    def debug_training(self, sess, step, train_metrics,train_loss):
-        if step % self.batch_size != 0:
-            return
-        summary, validation_loss, validation_metrics = sess.run([self.merged, self.loss, self.accuracy], feed_dict=self.feed_dict("validation"))
+    def debug_epoch(self, sess, step, epcoch_id):
+        #validation set
+        summary, val_metrics = sess.run([self.merged, self.accuracy], feed_dict=self.feed_dict("validation"))
         self.test_writer.add_summary(summary, step)
-        logging.info("Epoch {}/{}, train/val: {:.3f}/{:.3f}, train/val loss: {:.3f}/{:.3f}".format(step / self.batch_size, 
-                                                                                                     self.num_steps / self.batch_size, 
-                                                                                                     train_metrics, validation_metrics,\
-                                                                                                            train_loss, validation_loss))
+        
+        train_metrics = sess.run([self.accuracy], feed_dict=self.feed_dict("wholetrain"))[0]
+        
+        res = "train/val accuracy: {:.3f}/{:.3f} [{}/{}]".format(train_metrics, val_metrics,epcoch_id, self.num_epochs)
 
-        return
+        return res
     def get_final_result(self, sess, feed_dict):
         accuracy = sess.run(self.accuracy, feed_dict=feed_dict)
         return accuracy
+    def monitor_training(self, sess, train_loss, step):
+        epoch_has_iteration_num = self.y_train.shape[0]/self.batch_size
+        epoch_id = step / epoch_has_iteration_num
+        res = ""  
+        self.print_loss_every = epoch_has_iteration_num /1      #print traing loss 2 times each epoch
+        
+        if step == 1 or step % self.print_loss_every==0:
+            res +="train loss: {:.3f}[{}/{}]".format(train_loss,  step, self.num_steps)
+        if step == 1 or step % epoch_has_iteration_num ==0:
+            res +=self.debug_epoch(sess, step, epoch_id)
+        if res != "":
+            logging.debug(res)
+        return
     def run_graph(self):
         logging.debug("computeGraph")
+        epoch_has_iteration_num = self.y_train.shape[0]/self.batch_size
+        logging.debug("one epoch has {} iterations".format(epoch_has_iteration_num))
+        self.num_steps = self.num_epochs * epoch_has_iteration_num
         with tf.Session(graph=self.graph) as sess:
             tf.initialize_all_variables().run()
             logging.debug("Initialized")
-            for step in range(0, self.num_steps + 1):
-                summary,  _ , train_loss, train_metrics =sess.run([self.merged, self.train_step, self.loss, self.accuracy], 
+            for step in range(1, self.num_steps + 1):
+                summary,  _ , train_loss =sess.run([self.merged, self.train_step, self.loss], 
                                                                   feed_dict=self.feed_dict("train", phase_train = True))
                 self.train_writer.add_summary(summary, step)
-                self.debug_training(sess, step, train_metrics, train_loss)
-                
-     
+                self.monitor_training(sess, train_loss, step)
+
             train_accuracy = self.get_final_result(sess, self.feed_dict("wholetrain"))
             val_accuracy = self.get_final_result(sess, self.feed_dict("validation"))
             test_accuracy = self.get_final_result(sess, self.feed_dict("test"))
