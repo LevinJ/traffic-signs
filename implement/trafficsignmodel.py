@@ -11,6 +11,7 @@ import sys
 from utility.tfbasemodel import TFModel
 from preprocess.preparedata import PrepareData
 from sklearn.preprocessing import OneHotEncoder
+from utility.duration import Duration
 
 
 class TrafficSignModel(TFModel):
@@ -18,7 +19,7 @@ class TrafficSignModel(TFModel):
         TFModel.__init__(self)
         
         self.batch_size = 64
-        self.num_epochs = 60
+        self.num_epochs = 2
 
         self.summaries_dir = './logs/trafficsign'
         self.keep_dropout= 1.0
@@ -65,7 +66,7 @@ class TrafficSignModel(TFModel):
         self.keep_prob_placeholder = tf.placeholder(tf.float32, name='drop_out')
         self.phase_train_placeholder = tf.placeholder(tf.bool, name='phase_train')
         
-#         self.overfit_small_data()
+        self.overfit_small_data()
         return
     def add_inference_node(self):
         #output node self.pred
@@ -154,7 +155,7 @@ class TrafficSignModel(TFModel):
         
         train_metrics = sess.run([self.accuracy], feed_dict=self.feed_dict("wholetrain"))[0]
         
-        res = "train/val accuracy: {:.3f}/{:.3f} [{}/{}]".format(train_metrics, val_metrics,epcoch_id, self.num_epochs)
+        res = "train/val accuracy: {:.6f}/{:.6f} [{}/{}]".format(train_metrics, val_metrics,epcoch_id, self.num_epochs)
 
         return res
     def get_final_result(self, sess, feed_dict):
@@ -167,7 +168,7 @@ class TrafficSignModel(TFModel):
         self.print_loss_every = epoch_has_iteration_num /5      #print traing loss 2 times each epoch
         
         if step == 1 or step % self.print_loss_every==0:
-            res +="train loss: {:.3f}[{}/{}]".format(train_loss,  step, self.num_steps)
+            res +="train loss: {:.6f}[{}/{}]".format(train_loss,  step, self.num_steps)
         if step == 1 or step % epoch_has_iteration_num ==0:
             res +=self.debug_epoch(sess, step, epoch_id)
         if res != "":
@@ -175,6 +176,8 @@ class TrafficSignModel(TFModel):
         return
     def run_graph(self):
         logging.debug("computeGraph")
+        duation = Duration()
+        duation.start()
         epoch_has_iteration_num = self.y_train.shape[0]/self.batch_size
         logging.debug("one epoch has {} iterations".format(epoch_has_iteration_num))
         self.num_steps = self.num_epochs * epoch_has_iteration_num
@@ -186,11 +189,16 @@ class TrafficSignModel(TFModel):
                                                                   feed_dict=self.feed_dict("train", phase_train = True))
                 self.train_writer.add_summary(summary, step)
                 self.monitor_training(sess, train_loss, step)
+            
+            
+            
+            
+            duation.end(num_epoch = self.num_epochs, num_iteration=self.num_steps)
 
             train_accuracy = self.get_final_result(sess, self.feed_dict("wholetrain"))
             val_accuracy = self.get_final_result(sess, self.feed_dict("validation"))
             test_accuracy = self.get_final_result(sess, self.feed_dict("test"))
-            logging.info("train:{:.3f}, val:{:.3f},test:{:.3f}".format(train_accuracy, val_accuracy, test_accuracy))  
+            logging.info("train:{:.6f}, val:{:.6f},test:{:.6f}".format(train_accuracy, val_accuracy, test_accuracy))  
         return
 
 
