@@ -19,10 +19,10 @@ class TrafficSignModel(TFModel):
         TFModel.__init__(self)
         
         self.batch_size = 64
-        self.num_epochs = 2
+        self.num_epochs = 60
 
         self.summaries_dir = './logs/trafficsign'
-        self.keep_dropout= 1.0
+        self.keep_dropout= 0.8
         
        
         logging.getLogger().addHandler(logging.FileHandler('logs/trafficsignnerual.log', mode='w'))
@@ -66,23 +66,24 @@ class TrafficSignModel(TFModel):
         self.keep_prob_placeholder = tf.placeholder(tf.float32, name='drop_out')
         self.phase_train_placeholder = tf.placeholder(tf.bool, name='phase_train')
         
-        self.overfit_small_data()
+#         self.overfit_small_data()
         return
     def add_inference_node(self):
         #output node self.pred
         out = self.x_placeholder
-        out = self.cnn_layer('layer1',out , conv_fitler=[3,3,10])
+        
+        out = self.cnn_layer('layer1',out , conv_fitler=[3,3,8])
         out = self.max_pool_2x2("pooling1", out)
         
-        out = self.cnn_layer('layer2', out, conv_fitler=[3,3,10])
+        out = self.cnn_layer('layer2', out, conv_fitler=[3,3,8])
         out = self.max_pool_2x2("pooling2", out)
         
 #         out = self.cnn_layer('layer3', out, conv_fitler=[3,3,10])
 #         out = self.max_pool_2x2("pooling3", out)
        
-#         out = self.nn_layer('layer3', out, 100)
+        out = self.nn_layer('layer3', out, 43)
         
-        self.scores = self.nn_layer('layer3', out, self.outputlayer_num, act=None, dropout=False, batch_norm = False)
+        self.scores = self.nn_layer('layer4', out, self.outputlayer_num, act=None, dropout=False, batch_norm = False)
         return
     def add_loss_node(self):
         #output node self.loss
@@ -102,7 +103,7 @@ class TrafficSignModel(TFModel):
     def add_optimizer_node(self):
         #output node self.train_step
         with tf.name_scope('train'):
-            optimizer = tf.train.AdamOptimizer(1.0e-4)
+            optimizer = tf.train.AdamOptimizer(1.0e-3)
 #             optimizer = tf.train.GradientDescentOptimizer(5.0e-1)
 #             grads_and_vars = optimizer.compute_gradients(self.loss)
 #             self.ratio_w1 = self.euclidean_norm(grads_and_vars[0][0])/self.euclidean_norm(grads_and_vars[0][1])
@@ -165,9 +166,10 @@ class TrafficSignModel(TFModel):
         epoch_has_iteration_num = self.y_train.shape[0]/self.batch_size
         epoch_id = step / epoch_has_iteration_num
         res = ""  
-        self.print_loss_every = epoch_has_iteration_num /5      #print traing loss 2 times each epoch
+        print_loss_every_epoch = 5
+        print_loss_every = epoch_has_iteration_num /print_loss_every_epoch
         
-        if step == 1 or step % self.print_loss_every==0:
+        if step == 1 or step % print_loss_every==0:
             res +="train loss: {:.6f}[{}/{}]".format(train_loss,  step, self.num_steps)
         if step == 1 or step % epoch_has_iteration_num ==0:
             res +=self.debug_epoch(sess, step, epoch_id)
