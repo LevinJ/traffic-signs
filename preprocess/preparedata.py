@@ -3,6 +3,7 @@ from explore.exploredata import ExploreData
 import numpy as np
 from sklearn.cross_validation import StratifiedShuffleSplit
 from sklearn.preprocessing import MinMaxScaler
+from sklearn.utils import shuffle
 
 class PrepareData(ExploreData):
     def __init__(self):
@@ -38,7 +39,7 @@ class PrepareData(ExploreData):
         y = train_data[:,-1]
         
         
-        split = StratifiedShuffleSplit(y, 1, test_size=0.2, random_state=43)
+        split = StratifiedShuffleSplit(y, 1, test_size=0.1, random_state=43)
         for train_index, val_index in split:
             self.X_train = X[train_index]
             self.y_train = y[train_index]
@@ -53,6 +54,9 @@ class PrepareData(ExploreData):
         self.X_test = self.X_test.reshape(-1, 32,32,3)
         return self.X_train, self.y_train,self.X_val,self.y_val, self.X_test,self.y_test
         return
+    def __shuffle_test_data(self):
+        self.X_test, self.y_test = shuffle(self.X_test, self.y_test,random_state=2)
+        return
     def get_train_validationset(self):
         train_data, test_data = self.get_train_test_data()
         self.__split_dataset(train_data)
@@ -62,6 +66,7 @@ class PrepareData(ExploreData):
         self.y_train = self.y_train.reshape(-1, 1)
         self.y_val = self.y_val.reshape(-1, 1)
         self.y_test = self.y_test.reshape(-1, 1)
+        self.__shuffle_test_data()
         return self.X_train, self.y_train,self.X_val,self.y_val, self.X_test,self.y_test
     def run(self):
         self.get_train_validationset()

@@ -146,7 +146,7 @@ class TFModel(object):
             gamma = tf.Variable(tf.constant(1.0, shape=[feature_depth]),
                                           name='gamma', trainable=True)
             batch_mean, batch_var = tf.nn.moments(input_tensor, reduce_axis, name='moments')
-            ema = tf.train.ExponentialMovingAverage(decay=0.5)
+            ema = tf.train.ExponentialMovingAverage(decay=0.99)
     
             def mean_var_with_update():
                 ema_apply_op = ema.apply([batch_mean, batch_var])

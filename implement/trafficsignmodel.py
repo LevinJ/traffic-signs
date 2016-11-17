@@ -22,7 +22,10 @@ class TrafficSignModel(TFModel):
         self.num_epochs = 60
 
         self.summaries_dir = './logs/trafficsign'
-        self.keep_dropout= 0.8
+        self.keep_dropout= 0.5
+        self.learning_rate = 3.0e-4
+        self.learning_decay_fraction = 1.0
+        self.learning_decay_step = 5# dacay the learning rate every # epoch
         
        
         logging.getLogger().addHandler(logging.FileHandler('logs/trafficsignnerual.log', mode='w'))
@@ -32,12 +35,16 @@ class TrafficSignModel(TFModel):
         self.merged = tf.merge_all_summaries()
         self.train_writer = tf.train.SummaryWriter(self.summaries_dir+ '/train',
                                         self.graph)
-        self.test_writer = tf.train.SummaryWriter(self.summaries_dir + '/val')
+        self.val_writer = tf.train.SummaryWriter(self.summaries_dir + '/val')
+        
+        self.test_writer = tf.train.SummaryWriter(self.summaries_dir + '/test')
 
         return
     def overfit_small_data(self):
-        num_train = self.batch_size *10
+        num_train = self.batch_size *5
         self.X_train, self.y_train = self.X_train[:num_train], self.y_train[:num_train]
+        self.X_test, self.y_test = self.X_test[:2], self.y_test[:2]
+        self.X_val, self.y_val = self.X_val[:2], self.y_val[:2]
         return
     def get_input(self):
         # Input data.
@@ -65,6 +72,7 @@ class TrafficSignModel(TFModel):
             self.y_true_placeholder = tf.placeholder(tf.float32, [None, self.outputlayer_num ], name='y-input')
         self.keep_prob_placeholder = tf.placeholder(tf.float32, name='drop_out')
         self.phase_train_placeholder = tf.placeholder(tf.bool, name='phase_train')
+        self.learning_rate_placeholder = tf.placeholder(tf.float32, name='learning_rate')
         
 #         self.overfit_small_data()
         return
@@ -72,16 +80,16 @@ class TrafficSignModel(TFModel):
         #output node self.pred
         out = self.x_placeholder
         
-        out = self.cnn_layer('layer1',out , conv_fitler=[3,3,8])
+        out = self.cnn_layer('layer1',out , conv_fitler=[3,3,32])
         out = self.max_pool_2x2("pooling1", out)
-        
-        out = self.cnn_layer('layer2', out, conv_fitler=[3,3,8])
+         
+        out = self.cnn_layer('layer2', out, conv_fitler=[3,3,64])
         out = self.max_pool_2x2("pooling2", out)
-        
+         
 #         out = self.cnn_layer('layer3', out, conv_fitler=[3,3,10])
 #         out = self.max_pool_2x2("pooling3", out)
-       
-        out = self.nn_layer('layer3', out, 43)
+        
+        out = self.nn_layer('layer3', out, 100)
         
         self.scores = self.nn_layer('layer4', out, self.outputlayer_num, act=None, dropout=False, batch_norm = False)
         return
@@ -103,7 +111,7 @@ class TrafficSignModel(TFModel):
     def add_optimizer_node(self):
         #output node self.train_step
         with tf.name_scope('train'):
-            optimizer = tf.train.AdamOptimizer(1.0e-3)
+            optimizer = tf.train.AdamOptimizer(self.learning_rate_placeholder)
 #             optimizer = tf.train.GradientDescentOptimizer(5.0e-1)
 #             grads_and_vars = optimizer.compute_gradients(self.loss)
 #             self.ratio_w1 = self.euclidean_norm(grads_and_vars[0][0])/self.euclidean_norm(grads_and_vars[0][1])
@@ -138,41 +146,58 @@ class TrafficSignModel(TFModel):
             xs, ys = self.get_next_batch(self.X_train, self.y_train, self.batch_size)
             k = self.keep_dropout
         if feed_type == "validation":
-            xs, ys = self.X_val, self.y_val
+#             xs, ys = self.X_val, self.y_val
+            # Since tensorflow might have out of memory issue if the size is too big, we just take a small sample
+            xs, ys = self.get_next_batch(self.X_val, self.y_val, self.batch_size)
             k = 1.0
 
         if feed_type == "wholetrain":
-            xs, ys = self.X_train, self.y_train
+#             xs, ys = self.X_train, self.y_train
+            # Since tensorflow might have out of memory issue if the size is too big, we just take a small sample
+            xs, ys = self.get_next_batch(self.X_train, self.y_train, self.batch_size)
             k = 1.0
         # Now we are feeding test data into the neural network
         if feed_type == "test":
-            xs, ys = self.X_test, self.y_test
+#             xs, ys = self.X_test, self.y_test
+            # Since tensorflow might have out of memory issue if the size is too big, we just take a small sample
+            xs, ys = self.get_next_batch(self.X_test, self.y_test, self.batch_size*10)
             k = 1.0
-        return {self.x_placeholder: xs, self.y_true_placeholder: ys, self.keep_prob_placeholder: k, self.phase_train_placeholder:phase_train}
-    def debug_epoch(self, sess, step, epcoch_id):
+        res = {self.x_placeholder: xs, self.y_true_placeholder: ys, self.keep_prob_placeholder: k, self.phase_train_placeholder:phase_train}
+        if feed_type == "train":
+            res[self.learning_rate_placeholder] = self.learning_rate
+        return res
+    def debug_epoch(self, sess, step, epcoch_id, train_accuracy):
         #validation set
         summary, val_metrics = sess.run([self.merged, self.accuracy], feed_dict=self.feed_dict("validation"))
+        self.val_writer.add_summary(summary, step)
+        
+        summary, test_metrics = sess.run([self.merged, self.accuracy], feed_dict=self.feed_dict("test"))
+
         self.test_writer.add_summary(summary, step)
         
-        train_metrics = sess.run([self.accuracy], feed_dict=self.feed_dict("wholetrain"))[0]
+        train_metrics = train_accuracy
         
-        res = "train/val accuracy: {:.6f}/{:.6f} [{}/{}]".format(train_metrics, val_metrics,epcoch_id, self.num_epochs)
-
+        res = "train/val/test accuracy: {:.6f}/{:.6f}/{:.6f} [{}/{}]".format(train_metrics, val_metrics,test_metrics, epcoch_id, self.num_epochs)
+        
+        if (epcoch_id+1) % self.learning_decay_step == 0:
+            self.learning_rate *= self.learning_decay_fraction
+            logging.debug("learning rate decay: {}".format(self.learning_rate))
+            
         return res
     def get_final_result(self, sess, feed_dict):
         accuracy = sess.run(self.accuracy, feed_dict=feed_dict)
         return accuracy
-    def monitor_training(self, sess, train_loss, step):
+    def monitor_training(self, sess, train_loss, step, train_accuracy):
         epoch_has_iteration_num = self.y_train.shape[0]/self.batch_size
         epoch_id = step / epoch_has_iteration_num
         res = ""  
-        print_loss_every_epoch = 5
+        print_loss_every_epoch = 55
         print_loss_every = epoch_has_iteration_num /print_loss_every_epoch
         
         if step == 1 or step % print_loss_every==0:
             res +="train loss: {:.6f}[{}/{}]".format(train_loss,  step, self.num_steps)
-        if step == 1 or step % epoch_has_iteration_num ==0:
-            res +=self.debug_epoch(sess, step, epoch_id)
+        if step == 1 or step % (1*epoch_has_iteration_num) ==0:
+            res +=self.debug_epoch(sess, step, epoch_id, train_accuracy)
         if res != "":
             logging.debug(res)
         return
@@ -186,11 +211,17 @@ class TrafficSignModel(TFModel):
         with tf.Session(graph=self.graph) as sess:
             tf.initialize_all_variables().run()
             logging.debug("Initialized")
+            user_exit = False
             for step in range(1, self.num_steps + 1):
-                summary,  _ , train_loss =sess.run([self.merged, self.train_step, self.loss], 
-                                                                  feed_dict=self.feed_dict("train", phase_train = True))
-                self.train_writer.add_summary(summary, step)
-                self.monitor_training(sess, train_loss, step)
+                if user_exit:
+                    break
+                try:
+                    summary,  _ , train_loss, train_accuracy =sess.run([self.merged, self.train_step, self.loss, self.accuracy], 
+                                                                      feed_dict=self.feed_dict("train", phase_train = True))
+                    self.train_writer.add_summary(summary, step)
+                    self.monitor_training(sess, train_loss, step, train_accuracy)
+                except KeyboardInterrupt:
+                    user_exit = True
             
             
             

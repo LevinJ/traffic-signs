@@ -1,0 +1,3 @@
+11/16/1: increase last hidden layer from 43 to 100. similar final result. converge faster, tain reach 0.999 at 24 epoch.
+11/17/1: increase keep drop out from 1.0 to 0.8, gap remain the same
+11/17/2: increase decay from 0.5 to 0.99.
