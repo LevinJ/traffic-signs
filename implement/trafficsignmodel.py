@@ -220,6 +220,7 @@ class TrafficSignModel(TFModel):
                                                                       feed_dict=self.feed_dict("train", phase_train = True))
                     self.train_writer.add_summary(summary, step)
                     self.monitor_training(sess, train_loss, step, train_accuracy)
+                
                 except KeyboardInterrupt:
                     user_exit = True
             
@@ -228,9 +229,13 @@ class TrafficSignModel(TFModel):
             
             duation.end(num_epoch = self.num_epochs, num_iteration=self.num_steps)
 
-            train_accuracy = self.get_final_result(sess, self.feed_dict("wholetrain"))
-            val_accuracy = self.get_final_result(sess, self.feed_dict("validation"))
-            test_accuracy = self.get_final_result(sess, self.feed_dict("test"))
+            
+            train_accuracy = self.run_accuracyop_on_bigdataset(self.X_train, self.y_train,self.batch_size * 10, sess)
+            val_accuracy = self.run_accuracyop_on_bigdataset(self.X_val, self.y_val,self.batch_size * 10, sess)
+            test_accuracy = self.run_accuracyop_on_bigdataset(self.X_test, self.y_test, self.batch_size * 10, sess)
+#             train_accuracy = self.get_final_result(sess, self.feed_dict("wholetrain"))
+#             val_accuracy = self.get_final_result(sess, self.feed_dict("validation"))
+#             test_accuracy = self.get_final_result(sess, self.feed_dict("test"))
             logging.info("train:{:.6f}, val:{:.6f},test:{:.6f}".format(train_accuracy, val_accuracy, test_accuracy))  
         return
 

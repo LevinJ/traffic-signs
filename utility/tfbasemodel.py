@@ -20,6 +20,20 @@ class TFModel(object):
         batch_data = x[_positions]
         batch_labels = y[_positions]
         return batch_data, batch_labels
+    def run_accuracyop_on_bigdataset(self, X, y,batch_size, sess):
+        total_count = y.shape[0]
+        start = 0
+        end = batch_size
+        accuracy = []
+        while start < total_count and end <=total_count :
+            feed_dict = {self.x_placeholder: X[start:end], self.y_true_placeholder: y[start:end], self.keep_prob_placeholder: 1.0, self.phase_train_placeholder:False}
+            acc = sess.run(self.accuracy, feed_dict=feed_dict)
+            accuracy.append(acc)
+            start = end
+            end = start + batch_size
+            if end > total_count:
+                end = total_count
+        return np.mean(accuracy)
     def get_input(self):
         pass
     # We can't initialize these variables to 0 - the network will get stuck.
