@@ -22,8 +22,8 @@ class TrafficSignModel(TFModel):
         self.num_epochs = 60
 
         self.summaries_dir = './logs/trafficsign'
-        self.keep_dropout= 0.5
-        self.learning_rate = 3.0e-4
+        self.keep_dropout= 1.0
+        self.learning_rate = 5.0e-4
         self.learning_decay_fraction = 1.0
         self.learning_decay_step = 5# dacay the learning rate every # epoch
         
@@ -80,18 +80,18 @@ class TrafficSignModel(TFModel):
         #output node self.pred
         out = self.x_placeholder
         
-        out = self.cnn_layer('layer1',out , conv_fitler=[3,3,32])
+        out = self.cnn_layer('layer1',out , conv_fitler=[3,3,100])
         out = self.max_pool_2x2("pooling1", out)
          
-        out = self.cnn_layer('layer2', out, conv_fitler=[3,3,64])
+        out = self.cnn_layer('layer2', out, conv_fitler=[3,3,150])
         out = self.max_pool_2x2("pooling2", out)
          
-#         out = self.cnn_layer('layer3', out, conv_fitler=[3,3,10])
-#         out = self.max_pool_2x2("pooling3", out)
+        out = self.cnn_layer('layer3', out, conv_fitler=[3,3,250])
+        out = self.max_pool_2x2("pooling3", out)
         
-        out = self.nn_layer('layer3', out, 100)
+        out = self.nn_layer('layer4', out, 300)
         
-        self.scores = self.nn_layer('layer4', out, self.outputlayer_num, act=None, dropout=False, batch_norm = False)
+        self.scores = self.nn_layer('layer5', out, self.outputlayer_num, act=None, dropout=False, batch_norm = False)
         return
     def add_loss_node(self):
         #output node self.loss
