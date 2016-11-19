@@ -1,7 +1,14 @@
+import sys
+import os
+from __builtin__ import True
+sys.path.insert(0, os.path.abspath('..'))
+
 from exploredata import ExploreData
 import matplotlib.pyplot as plt
 from utility.vis_utils import vis_grid
+from utility.vis_utils import vis_grid_withlabels
 import numpy as np
+import math 
 
 
 class VisualizeImages(ExploreData):
@@ -9,19 +16,22 @@ class VisualizeImages(ExploreData):
         ExploreData.__init__(self)
 
         return
-    def show_images(self):
-        train_data, test_data = self.get_train_test_data()
+    def show_images(self, data):
         
-        features = train_data[:,:-1].reshape(-1, 32, 32, 3)
-        labels = train_data[:,-1]
-        val, ind = np.unique(labels,  return_index=True)
-        sampled_images = features[ind]
-        res = vis_grid(sampled_images)
-        plt.imshow(res)
+        
+        features = data[:,:-1].reshape(-1, 32, 32, 3)
+        labels = data[:,-1]
+        total_size = labels.shape[0]
+        ind= np.random.choice(total_size, size=16)
+        
+        vis_grid_withlabels(features[ind], self.get_label_names(labels[ind]))
+
         return
     
+    
     def run(self):
-        self.show_images()
+        train_data, test_data = self.get_train_test_data()
+        self.show_images(test_data)
         plt.show()
 
         return

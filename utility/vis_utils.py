@@ -1,5 +1,6 @@
 from math import sqrt, ceil
 import numpy as np
+import matplotlib.pyplot as plt
 
 def visualize_grid(Xs, ubound=255.0, padding=1):
     """
@@ -68,4 +69,20 @@ def vis_nn(rows):
     ming = G.min()
     G = (G - ming)/(maxg-ming)
     return G
+def vis_grid_withlabels(X, labels):
+        #crop too long lables
+#         labels = [label[:22] for label in labels]
+        (N, H, W, C) = X.shape
+        col_len = row_len = int(ceil(sqrt(N)))
+        count = 1
+        plt.figure()
+        while count <=N:
+            ax = plt.subplot(row_len, col_len, count)
+            ax.imshow(X[count-1])
+            ax.set_title(labels[count-1],loc='left')
+            ax.grid(False)
+            ax.set_xticklabels([])
+            ax.set_yticklabels([])
+            count = count + 1
+        return
 

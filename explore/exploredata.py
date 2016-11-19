@@ -1,6 +1,7 @@
 from utility.dumpload import DumpLoad
 import numpy as np
 from sklearn.preprocessing import scale
+import pandas as pd
 
 
 
@@ -32,6 +33,21 @@ class ExploreData(object):
         num_class = np.unique(labels).size
         num_bin, bins = np.histogram(labels, np.arange(0, num_class+1))
         return num_sample, num_class, num_bin,bins[:-1]
+    def __get_label_dict(self):
+        filename = '../signnames.csv'
+        res={}
+        df = pd.read_csv(filename)
+        for index, row in df.iterrows():
+            res[row['ClassId']] = row['SignName']
+        return res
+    def get_label_names(self, labels):
+        res = []
+        dict = self.__get_label_dict()
+        for label in labels:
+            temp = str(label) + ":" + dict[label]
+            res.append(temp)
+            
+        return res
     def load(self):
         
 #         dump_load2 = DumpLoad('../data/test_2.p')
@@ -47,6 +63,7 @@ class ExploreData(object):
         return
         
     def run(self):
+        self.get_label_names([0,3,24,25])
         train_data, test_data = self.get_train_test_data()
         sts_train = self.get_data_statistics(train_data)
         print(sts_train)
