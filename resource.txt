@@ -1,0 +1,6 @@
+Traffic Sign Classification Using Deep Inception Based Convolutional Networks
+
+https://arxiv.org/pdf/1511.02992.pdf
+
+Multi-Column Deep Neural Network for Trac Sign Classi cation
+http://people.idsia.ch/~juergen/nn2012traffic.pdf

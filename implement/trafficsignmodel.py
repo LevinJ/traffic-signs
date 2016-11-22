@@ -12,6 +12,7 @@ from utility.tfbasemodel import TFModel
 from preprocess.preparedata import PrepareData
 from sklearn.preprocessing import OneHotEncoder
 from utility.duration import Duration
+from preprocess.imageaugmentation import ImageAugmentation
 
 
 class TrafficSignModel(TFModel):
@@ -19,11 +20,11 @@ class TrafficSignModel(TFModel):
         TFModel.__init__(self)
         
         self.batch_size = 64
-        self.num_epochs = 60
+        self.num_epochs = 15
 
         self.summaries_dir = './logs/trafficsign'
-        self.keep_dropout= 1.0
-        self.learning_rate = 5.0e-4
+        self.keep_dropout= 0.8
+        self.learning_rate = 1.0e-3
         self.learning_decay_fraction = 1.0
         self.learning_decay_step = 5# dacay the learning rate every # epoch
         
@@ -135,20 +136,29 @@ class TrafficSignModel(TFModel):
                 correct_prediction = tf.equal(tf.argmax(self.y_pred,1), tf.argmax(self.y_true_placeholder,1))
             with tf.name_scope('accuracy'):
                 self.accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
+            with tf.name_scope('predictedlabel'):
+                self.predictedlabel =  tf.argmax(self.y_pred,1)
+            with tf.name_scope('topk5'):
+                self.topk5 =  tf.nn.top_k(self.y_pred, k=5)
             tf.scalar_summary('accuracy', self.accuracy)
         return
     def add_evalmetrics_node(self):
         self.add_accuracy_node()
         return
+    def get_next_batch_augumented(self, x, y, batch_size):
+        xs, ys = self.get_next_batch(x, y, batch_size)
+        aug = ImageAugmentation()
+        xs = aug.transform_imagebatch(xs)
+        return xs, ys 
     def feed_dict(self,feed_type, phase_train = False):
         """Make a TensorFlow feed_dict: maps data onto Tensor placeholders."""
         if feed_type == "train":
-            xs, ys = self.get_next_batch(self.X_train, self.y_train, self.batch_size)
+            xs, ys = self.get_next_batch_augumented(self.X_train, self.y_train, self.batch_size)
             k = self.keep_dropout
         if feed_type == "validation":
 #             xs, ys = self.X_val, self.y_val
             # Since tensorflow might have out of memory issue if the size is too big, we just take a small sample
-            xs, ys = self.get_next_batch(self.X_val, self.y_val, self.batch_size)
+            xs, ys = self.get_next_batch(self.X_val, self.y_val, 2000)
             k = 1.0
 
         if feed_type == "wholetrain":
@@ -160,7 +170,7 @@ class TrafficSignModel(TFModel):
         if feed_type == "test":
 #             xs, ys = self.X_test, self.y_test
             # Since tensorflow might have out of memory issue if the size is too big, we just take a small sample
-            xs, ys = self.get_next_batch(self.X_test, self.y_test, self.batch_size*10)
+            xs, ys = self.get_next_batch(self.X_test, self.y_test, 2000)
             k = 1.0
         res = {self.x_placeholder: xs, self.y_true_placeholder: ys, self.keep_prob_placeholder: k, self.phase_train_placeholder:phase_train}
         if feed_type == "train":
@@ -191,7 +201,7 @@ class TrafficSignModel(TFModel):
         epoch_has_iteration_num = self.y_train.shape[0]/self.batch_size
         epoch_id = step / epoch_has_iteration_num
         res = ""  
-        print_loss_every_epoch = 55
+        print_loss_every_epoch = 5
         print_loss_every = epoch_has_iteration_num /print_loss_every_epoch
         
         if step == 1 or step % print_loss_every==0:
@@ -210,6 +220,9 @@ class TrafficSignModel(TFModel):
         self.num_steps = self.num_epochs * epoch_has_iteration_num
         with tf.Session(graph=self.graph) as sess:
             tf.initialize_all_variables().run()
+            model_dir = '../models/'
+            if  not os.path.exists(model_dir):
+                model_dir = './models/'
             logging.debug("Initialized")
             user_exit = False
             for step in range(1, self.num_steps + 1):
@@ -237,6 +250,10 @@ class TrafficSignModel(TFModel):
 #             val_accuracy = self.get_final_result(sess, self.feed_dict("validation"))
 #             test_accuracy = self.get_final_result(sess, self.feed_dict("test"))
             logging.info("train:{:.6f}, val:{:.6f},test:{:.6f}".format(train_accuracy, val_accuracy, test_accuracy))  
+            model_dir = '../models/'
+            if  not os.path.exists(model_dir):
+                model_dir = './models/'
+            self.savetheModel(sess, model_dir)
         return
 
 

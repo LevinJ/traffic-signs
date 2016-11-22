@@ -4,7 +4,7 @@ import numpy as np
 from sklearn.cross_validation import StratifiedShuffleSplit
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.utils import shuffle
-
+from utility.dumpload import DumpLoad
 class PrepareData(ExploreData):
     def __init__(self):
         ExploreData.__init__(self)
@@ -20,6 +20,10 @@ class PrepareData(ExploreData):
         self.X_train = (self.X_train - mean_image)/std_image
         self.X_val = (self.X_val - mean_image)/std_image
         self.X_test = (self.X_test - mean_image)/std_image
+        
+        dumpload = DumpLoad('../data/meanstdimage.pickle')
+        if not dumpload.isExisiting():
+            dumpload.dump((mean_image,std_image))
         
         
 #         self.X_test -= mean_image
@@ -39,7 +43,7 @@ class PrepareData(ExploreData):
         y = train_data[:,-1]
         
         
-        split = StratifiedShuffleSplit(y, 1, test_size=0.1, random_state=43)
+        split = StratifiedShuffleSplit(y, 1, test_size=0.2, random_state=43)
         for train_index, val_index in split:
             self.X_train = X[train_index]
             self.y_train = y[train_index]

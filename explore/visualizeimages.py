@@ -29,6 +29,12 @@ class VisualizeImages(ExploreData):
         vis_grid_withlabels(features[ind], self.get_label_names(labels[ind]))
 
         return
+    def show_unique_images(self, data):
+        features = data[:,:-1].reshape(-1, 32, 32, 3)
+        labels = data[:,-1]
+        _, ind = np.unique(labels,  return_index=True)
+        vis_grid_withlabels(features[ind], self.get_label_names(labels[ind]))
+        return
     def show_augmentedimages(self, data):
         features = data[:,:-1].reshape(-1, 32, 32, 3)
         labels = data[:,-1]
@@ -47,7 +53,8 @@ class VisualizeImages(ExploreData):
     def run(self):
         train_data, test_data = self.get_train_test_data()
 #         self.show_images(test_data)
-        self.show_augmentedimages(train_data)
+#         self.show_augmentedimages(train_data)
+        self.show_unique_images(train_data)
         plt.show()
 
         return

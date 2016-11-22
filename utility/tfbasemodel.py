@@ -2,6 +2,7 @@ import tensorflow as tf
 import numpy as np
 import logging
 import sys
+import os
 
 
 
@@ -9,6 +10,7 @@ import sys
 class TFModel(object):
     def __init__(self):
         root = logging.getLogger()
+        root.handlers = []
         root.addHandler(logging.StreamHandler(sys.stdout))
         root.setLevel(logging.DEBUG)
         return
@@ -20,6 +22,18 @@ class TFModel(object):
         batch_data = x[_positions]
         batch_labels = y[_positions]
         return batch_data, batch_labels
+    def restoreModel(self, session, checkpoint_dir):
+        logging.debug("restoreModel...")
+        ckpt = tf.train.get_checkpoint_state(checkpoint_dir)
+        tf.train.Saver().restore(session, ckpt.model_checkpoint_path)
+        return
+    def savetheModel(self,session, checkpoint_dir):
+        modelfilepath  = checkpoint_dir + self.__class__.__name__ + '_model.ckpt'
+        if not os.path.exists(checkpoint_dir):
+            os.makedirs(checkpoint_dir)
+        modelpath = tf.train.Saver().save(session, modelfilepath)
+        logging.debug("Model saved at {}".format(modelpath))
+        return
     def run_accuracyop_on_bigdataset(self, X, y,batch_size, sess):
         total_count = y.shape[0]
         start = 0
@@ -70,7 +84,7 @@ class TFModel(object):
             post_pool = tf.nn.max_pool(x, ksize=[1, 2, 2, 1],
                         strides=[1, 2, 2, 1], padding='SAME')
             return post_pool
-    def cnn_layer(self,layer_name, input_tensor,  conv_fitler=[5,5,10], act=tf.nn.relu, dropout=True, batch_norm = True):
+    def cnn_layer(self,layer_name, input_tensor,  conv_fitler=[5,5,10], act=tf.nn.relu, dropout=False, batch_norm = True):
         """Reusable code for making a simple neural net layer.
         It does a matrix multiply, bias add, and then uses relu to nonlinearize.
         It also sets up name scoping so that the resultant graph is easy to read,

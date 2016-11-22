@@ -2,6 +2,7 @@ from utility.dumpload import DumpLoad
 import numpy as np
 from sklearn.preprocessing import scale
 import pandas as pd
+import os
 
 
 
@@ -24,8 +25,12 @@ class ExploreData(object):
         _, _, test_num_bin,test_bins = self.get_data_statistics(test_data)
         return train_num_bin,train_bins, test_num_bin,test_bins
     def get_train_test_data(self):
-        train_data = self.__get_data('../data/train_2.p')
-        test_data = self.__get_data('../data/test_2.p')
+        if  os.path.exists('../data/train.p'):
+            train_data = self.__get_data('../data/train.p')
+            test_data = self.__get_data('../data/test.p')
+        else:
+            train_data = self.__get_data('./data/train.p')
+            test_data = self.__get_data('./data/test.p')
         return train_data, test_data
     def get_data_statistics(self, data):
         num_sample = data.shape[0]
@@ -33,8 +38,10 @@ class ExploreData(object):
         num_class = np.unique(labels).size
         num_bin, bins = np.histogram(labels, np.arange(0, num_class+1))
         return num_sample, num_class, num_bin,bins[:-1]
-    def __get_label_dict(self):
+    def __get_label_dict(self): 
         filename = '../signnames.csv'
+        if  not os.path.exists(filename):
+            filename = './signnames.csv'
         res={}
         df = pd.read_csv(filename)
         for index, row in df.iterrows():
@@ -64,11 +71,11 @@ class ExploreData(object):
         
     def run(self):
         self.get_label_names([0,3,24,25])
-        train_data, test_data = self.get_train_test_data()
-        sts_train = self.get_data_statistics(train_data)
-        print(sts_train)
-        sts_test = self.get_data_statistics(test_data)
-        print(sts_test)
+#         train_data, test_data = self.get_train_test_data()
+#         sts_train = self.get_data_statistics(train_data)
+#         print(sts_train)
+#         sts_test = self.get_data_statistics(test_data)
+#         print(sts_test)
         return
     
 

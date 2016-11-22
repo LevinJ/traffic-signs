@@ -4,7 +4,24 @@ import cv2
 class ImageAugmentation():
     def __init__(self):
         return
-    def __transform_image(self, img,ang_range,shear_range,trans_range):
+    def translation(self, img, shift_range = 2):
+        x = int(np.random.random() * shift_range *2) - shift_range
+        y = int(np.random.random() * shift_range *2) - shift_range
+        
+        rows,cols,_= img.shape
+        M = np.float32([[1,0,x],[0,1,y]])
+        img_trans = cv2.warpAffine(img, M,(cols,rows))
+        return img_trans
+    def rotation(self, img, angle=15.0, scale = 0.1):
+        degree = int(np.random.random()*angle*2)-angle
+        ratio = np.random.random()*scale*2 - scale + 1
+        
+        rows,cols, _ = img.shape
+        M = cv2.getRotationMatrix2D((cols/2,rows/2),degree,ratio)
+        img_trans = cv2.warpAffine(img,M,(cols,rows))
+        return img_trans
+    
+    def __transform_image_1(self, img,ang_range,shear_range,trans_range):
         '''
         This function transforms images to generate new images.
         The function takes in following arguments,
@@ -42,11 +59,15 @@ class ImageAugmentation():
         img = cv2.warpAffine(img,shear_M,(cols,rows))
         
         return img
+    def __transform_image(self, img, shift, angle, scale):
+        img = self.translation(img, shift)
+        img = self.rotation(img, angle, scale)
+        return img
     def transform_image(self, img):
-        ang_range = 20 #rotation angle 10 degree
-        shear_range = 10 #
-        trans_range = 5 #both x an y shift 2.5
-        return self.__transform_image(img,ang_range,shear_range,trans_range)
+        angle = 15 #rotation angle 15 degree
+        scale = 0.1 #
+        shift = 2 #both x an y shift 2
+        return self.__transform_image(img, shift, angle, scale)
     def transform_imagebatch(self, batch_image):
         N = batch_image.shape[0]
         res =[]
@@ -56,7 +77,15 @@ class ImageAugmentation():
         return np.array(res)
         
     def run(self):
+        img = cv2.imread('../data/sift_basic_0.jpg', cv2.IMREAD_COLOR)
+        cv2.imshow('image',img)
         
+#         img = self.translation(img,shift_range = 20)
+#         img = self.rotation(img, 45, 0.9)
+        img = self.transform_image(img)
+        cv2.imshow('image_scaled',img)
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
         return
     
 
