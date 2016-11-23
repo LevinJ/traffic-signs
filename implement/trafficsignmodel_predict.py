@@ -17,6 +17,7 @@ from utility.dumpload import DumpLoad
 from sklearn.preprocessing import OneHotEncoder
 from utility.vis_utils import vis_grid_withlabels
 from explore.exploredata import ExploreData
+from explore.visualizeclassification import VisuallieClassification
 
 
 class TrafficSignModel_Predict(TrafficSignModel):
@@ -53,7 +54,7 @@ class TrafficSignModel_Predict(TrafficSignModel):
         for i in range(len(true_lables)):
             logging.debug("image {} :True {}, predicted {}".format(i, true_lables[i], predict_labels[i]))
         return
-    def show_topk_result(self, topk_res, true_lables):
+    def show_topk_result(self, imgs, topk_res, true_lables):
         true_lables = ExploreData().get_label_names(true_lables)
         values = topk_res[0]
         indices = topk_res[1]
@@ -61,6 +62,13 @@ class TrafficSignModel_Predict(TrafficSignModel):
         for i in range(img_num):
             logging.debug("image {} :True {}, predicted indices {}, predicted values,{}".format(i, true_lables[i], 
                                                                                                 ExploreData().get_label_names(indices[i]), values[i]))
+        for i in range(img_num):
+            class_score = values[i]
+            
+            class_name= ExploreData().get_label_names(indices[i])
+            img = imgs[i]
+            img_title = 'Image #{}\nTrue Lable: {}'.format(i+1, true_lables[i])
+            VisuallieClassification().plt_classification(img_title, img, class_score, class_name)
         return
 
    
@@ -72,13 +80,13 @@ class TrafficSignModel_Predict(TrafficSignModel):
             if  not os.path.exists(model_dir):
                 model_dir = './models/'
             self.restoreModel(sess, model_dir)
-            webimg, webimgylabel=self.load_images()
-            webimg = self.normalize_images(webimg)
-            feed_dict = {self.x_placeholder: webimg, 
-                         self.y_true_placeholder: webimgylabel, 
+            imgs, true_lables_hotencoded=self.load_images()
+            webimg_norm = self.normalize_images(imgs)
+            feed_dict = {self.x_placeholder: webimg_norm, 
+                         self.y_true_placeholder: true_lables_hotencoded, 
                          self.keep_prob_placeholder: 1.0, 
                          self.phase_train_placeholder:False}
-            true_lables = np.argmax(webimgylabel, axis =1)
+            true_lables = np.argmax(true_lables_hotencoded, axis =1)
             if not self.do_topk5:
                 predicted_label, acc = sess.run([self.predictedlabel, self.accuracy], feed_dict=feed_dict)
                 
@@ -86,7 +94,7 @@ class TrafficSignModel_Predict(TrafficSignModel):
                 self.show_predict_result(true_lables, predicted_label)
             else:
                 topk_res= sess.run(self.topk5, feed_dict=feed_dict)
-                self.show_topk_result(topk_res, true_lables)
+                self.show_topk_result(imgs, topk_res, true_lables)
             
             
             
