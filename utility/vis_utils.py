@@ -75,7 +75,6 @@ def vis_grid_withlabels(X, labels):
         (N, H, W, C) = X.shape
         col_len = row_len = int(ceil(sqrt(N)))
         count = 1
-        plt.figure()
         while count <=N:
             ax = plt.subplot(row_len, col_len, count)
             ax.imshow(X[count-1])

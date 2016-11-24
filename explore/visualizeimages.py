@@ -20,7 +20,7 @@ class VisualizeImages(ExploreData):
         return
     def show_images(self, data):
         
-        
+        plt.figure(figsize=(18,8))
         features = data[:,:-1].reshape(-1, 32, 32, 3)
         labels = data[:,-1]
         total_size = labels.shape[0]
@@ -52,9 +52,9 @@ class VisualizeImages(ExploreData):
     
     def run(self):
         train_data, test_data = self.get_train_test_data()
-#         self.show_images(test_data)
+        self.show_images(test_data)
 #         self.show_augmentedimages(train_data)
-        self.show_unique_images(train_data)
+#         self.show_unique_images(train_data)
         plt.show()
 
         return
